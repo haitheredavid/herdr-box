@@ -1,0 +1,5 @@
+# amd64-only toolchains (/etc/mise/conf.d/herdr-box-amd64.toml); the bootstrap
+# skips this file on arm64. Flutter publishes no linux-arm64 SDK, and Android
+# build tools are x86_64-only on Linux.
+[tools]
+flutter = "3.47"

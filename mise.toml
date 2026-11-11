@@ -1,0 +1,47 @@
+# Toolchain + task entrypoints. First run: mise trust && mise install.
+[tools]
+shellcheck = "latest"
+terraform = "1.14"
+
+[tasks.check]
+description = "static: shellcheck + terraform fmt/validate"
+run = [
+  "shellcheck bootstrap/*.sh bootstrap/bin/* scripts/*.sh test/*.sh",
+  "terraform -chdir=terraform fmt -check -recursive",
+  "terraform -chdir=terraform init -input=false >/dev/null",
+  "terraform -chdir=terraform validate",
+]
+
+[tasks.test]
+description = "end-to-end: build the image, boot it, bootstrap, smoke over SSH, replace and re-check (Docker, network)"
+run = "test/run.sh"
+
+[tasks."tf:init"]
+run = "terraform -chdir=terraform init -input=false"
+
+[tasks."tf:plan"]
+run = "terraform -chdir=terraform plan -input=false -out=herdr-box.tfplan"
+
+[tasks."tf:apply"]
+description = "apply the reviewed plan from tf:plan"
+run = "terraform -chdir=terraform apply herdr-box.tfplan"
+
+[tasks.logs]
+description = "follow the in-container bootstrap"
+run = "docker exec herdr-box journalctl -fu herdr-box-bootstrap -o cat"
+
+[tasks."ts:up"]
+description = "log the container into your tailnet (once; state persists in a volume)"
+run = "docker exec -it herdr-box tailscale up --hostname=herdr-box"
+
+[tasks.deploy]
+description = "push bootstrap/config and re-run the bootstrap without a restart: mise run deploy -- <ssh-host>"
+run = "scripts/deploy.sh"
+
+[tasks.smoke]
+description = "smoke-check the box over SSH: mise run smoke -- <ssh-host>"
+run = "scripts/smoke.sh"
+
+[tasks.login]
+description = "log omp in to a provider via your browser (forwards its OAuth callback): mise run login -- <ssh-host> [provider]"
+run = "scripts/login.sh"

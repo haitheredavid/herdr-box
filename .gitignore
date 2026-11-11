@@ -1,0 +1,13 @@
+.env
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+# Personal config; templates: *.example
+config/box.conf
+config/authorized_keys
+terraform/terraform.tfvars
+PLAN.md
+TODO.md
+NOTES.md
+SCRATCH.md

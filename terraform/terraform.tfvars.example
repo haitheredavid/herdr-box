@@ -1,0 +1,12 @@
+# Copy to terraform/terraform.tfvars (git-ignored) and edit.
+
+# Container name, hostname, and Tailscale machine name.
+# name = "herdr-box"
+
+# Docker daemon to run the box on (default: DOCKER_HOST or the local socket).
+# docker_host = "ssh://me@machine"
+
+# Dotfiles checkout whose linux/Dockerfile the box image builds on (empty: plain
+# Ubuntu 24.04). That image should create BOX_USER and may put the checkout at
+# /opt/dotfiles, from which homes without ~/projects/dotfiles are seeded.
+# dotfiles_dir = "~/projects/dotfiles"

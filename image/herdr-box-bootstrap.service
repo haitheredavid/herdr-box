@@ -1,0 +1,13 @@
+[Unit]
+Description=herdr-box bootstrap (idempotent host setup)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /opt/herdr-box/bootstrap/bootstrap.sh
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

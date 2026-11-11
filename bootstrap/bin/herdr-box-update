@@ -1,0 +1,23 @@
+#!/bin/bash
+# Update Herdr and the agent tools in ~/.local/bin (run as yourself, not root).
+# Running hc terminals survive herdr-core update.
+set -euo pipefail
+
+[ "$(id -u)" -ne 0 ] || {
+    echo "herdr-box: run as your own user, not root" >&2
+    exit 1
+}
+export PATH="$HOME/.local/bin:$PATH"
+
+step() { echo "==> $*"; }
+
+step "herdr-core update"
+herdr-core update
+step "herdr update"
+herdr update
+step "claude update"
+claude update
+step "codex (reinstall latest)"
+curl -fsSL https://chatgpt.com/codex/install.sh | sh
+step "omp (reinstall latest binary)"
+curl -fsSL https://omp.sh/install | sh -s -- --binary
