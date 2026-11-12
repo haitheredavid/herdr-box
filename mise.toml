@@ -32,7 +32,7 @@ run = "docker exec herdr-box journalctl -fu herdr-box-bootstrap -o cat"
 
 [tasks."ts:up"]
 description = "log the container into your tailnet (once; state persists in a volume)"
-run = "docker exec -it herdr-box tailscale up --hostname=herdr-box"
+run = "docker exec -it herdr-box tailscale up --hostname=herdr-box --ssh"
 
 [tasks.deploy]
 description = "push bootstrap/config and re-run the bootstrap without a restart: mise run deploy -- <ssh-host>"

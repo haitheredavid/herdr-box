@@ -31,7 +31,7 @@ mise run logs / ts:up           # follow boot bootstrap / tailscale login in the
 - The image is `FROM` `BASE`: plain Ubuntu, or the image from the user's dotfiles checkout (terraform `dotfiles_dir`, its `linux/Dockerfile`). The system layer is baked in (`bootstrap.sh --system`); the boot bootstrap only verifies it. The dotfiles repo owns its own setup (`DOTFILES_SETUP`); `bootstrap/dotfiles.sh` only ensures the repo (seeded from `/opt/dotfiles` or cloned) and calls it. Herdr integrations install only when missing, so they never rewrite agent configs the dotfiles link in. If the account's uid differs from its home's owner (base image vs an older volume), the bootstrap follows the home.
 - Single user, so Docker is rootful, with the user in the `docker` group.
 - Projects can be shared live from the Docker host: terraform `projects_dir` bind-mounts it at `~/projects`, no syncing. It's container-only and the bootstrap doesn't know about it. The test mounts a throwaway directory there, never the real one.
-- Access is Tailscale only: no published ports, keys-only sshd. The tailnet login is interactive, so no auth key ends up in Terraform state.
+- Access is Tailscale only: no published ports. Tailscale SSH (`--ssh`, tailnet policy `accept`) signs in the phone app by tailnet identity, since it can't export a key; sshd behind it stays keys-only. The tailnet login is interactive, so no auth key ends up in Terraform state.
 - Flutter goes in `config/mise.amd64.toml` and is skipped on arm64.
 
 ## Safety

@@ -32,7 +32,7 @@ Once, on the box; they live in `/home` and survive rebuilds.
 
 ## Use
 
-- Herdr app: add machine `herdr-box`
+- Herdr app (phone): add host `herdr-box`, your `BOX_USER`, port 22, no key; Tailscale SSH signs it in (see Security)
 - Herdr TUI: `herdr machine add herdr-box`
 - Shell: `ssh herdr-box`, `hc run --bg --name fix --keep claude`, `hc attach fix`
 - Update agent tools: `herdr-box-update` on the box
@@ -53,8 +53,14 @@ On the Mac (Tailscale running): `mise run llm:up` runs Llama 3.1 8B Instruct in 
 
 - `mise run deploy -- herdr-box`: re-run the bootstrap on the live box, no restart.
 - `tf:plan` + `tf:apply`: rebuild and **replace the container** (kills running terminals). `/home`, Tailscale identity and host keys are volumes and survive.
-- Dedicated machine: Ubuntu 24.04 with a sudo user named `BOX_USER`, then `mise run deploy -- <host>` and `sudo tailscale up`.
+- Dedicated machine: Ubuntu 24.04 with a sudo user named `BOX_USER`, then `mise run deploy -- <host>` and `sudo tailscale up --ssh`.
 
 ## Security
 
-No published ports; keys-only SSH over your tailnet for `BOX_USER` only. The container is privileged and `BOX_USER` has sudo and Docker: it's a single-person box, not one to share. No secrets in the repo or Terraform state.
+No published ports; SSH only over your tailnet. Tailscale SSH (`--ssh`) answers port 22 on the tailnet address and authenticates by tailnet identity, so the phone needs no key. Your tailnet policy (admin console, Access controls) must `accept` SSH as `BOX_USER`; the default `check` asks for a browser re-login that background Herdr connections can't answer:
+
+```json
+"ssh": [{"action": "accept", "src": ["autogroup:member"], "dst": ["autogroup:self"], "users": ["<BOX_USER>"]}]
+```
+
+sshd itself stays keys-only for `BOX_USER` (`config/authorized_keys`), and is what non-Tailscale routes reach. The container is privileged and `BOX_USER` has sudo and Docker: it's a single-person box, not one to share. No secrets in the repo or Terraform state.
