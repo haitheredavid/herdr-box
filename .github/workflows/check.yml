@@ -1,0 +1,23 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    env:
+      # mise refuses untrusted config files; the repo's own mise.toml is trusted here.
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      # terraform validate evaluates main.tf's file("config/box.conf"), which is
+      # git-ignored; the committed template stands in for it.
+      - run: cp config/box.conf.example config/box.conf
+      - run: mise run check
