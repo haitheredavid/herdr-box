@@ -17,6 +17,8 @@ locals {
     if !startswith(f, ".git/") && !endswith(f, ".DS_Store")
   ])
   dotfiles_hash = sha1(join("", [for f in local.dotfiles_files : filesha1("${local.dotfiles}/${f}")]))
+
+  projects = var.projects_dir == "" ? null : abspath(pathexpand(var.projects_dir))
 }
 
 resource "docker_image" "dotfiles" {
@@ -115,5 +117,14 @@ resource "docker_container" "box" {
   volumes {
     volume_name    = docker_volume.containerd.name
     container_path = "/var/lib/containerd"
+  }
+  # Your projects, shared live with the Docker host. Docker Desktop shows bind-mounted
+  # files as owned by whichever user reads them, so the box user owns them.
+  dynamic "volumes" {
+    for_each = local.projects == null ? [] : [local.projects]
+    content {
+      host_path      = volumes.value
+      container_path = "/home/${local.box_user}/projects"
+    }
   }
 }

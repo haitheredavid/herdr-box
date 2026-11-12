@@ -10,6 +10,8 @@
 #
 # Usage: test/run.sh            KEEP=1 test/run.sh  (leave the container running)
 #   DOTFILES_DIR  override terraform's dotfiles_dir ("" for a plain Ubuntu base)
+#   PROJECTS_DIR  override terraform's projects_dir; when set, a throwaway projects dir
+#                 (never the real one) is mounted at ~/projects the same way
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -26,6 +28,7 @@ fail() {
 BOX_USER=
 BOX_SHELL=bash
 DOTFILES_REPO=
+LLAMA_CPP_URL=
 # shellcheck source=/dev/null
 . config/box.conf
 user=$BOX_USER
@@ -33,6 +36,9 @@ if [ -z "${DOTFILES_DIR+set}" ]; then
     DOTFILES_DIR=$(sed -n 's/^ *dotfiles_dir *= *"\(.*\)".*/\1/p' terraform/terraform.tfvars 2>/dev/null || true)
 fi
 DOTFILES_DIR=${DOTFILES_DIR/#\~/$HOME}
+if [ -z "${PROJECTS_DIR+set}" ]; then
+    PROJECTS_DIR=$(sed -n 's/^ *projects_dir *= *"\(.*\)".*/\1/p' terraform/terraform.tfvars 2>/dev/null || true)
+fi
 
 work=$(mktemp -d)
 cleanup() {
@@ -50,6 +56,15 @@ trap cleanup EXIT
 cp -R config "$work/config"
 ssh-keygen -q -t ed25519 -N '' -C test -f "$work/key"
 cp "$work/key.pub" "$work/config/authorized_keys"
+projects=()
+if [ -n "$PROJECTS_DIR" ]; then
+    # A project made on the host side, like the ones the real mount brings in.
+    mkdir -p "$work/projects"
+    git -C "$work/projects" init -q host-repo
+    git -C "$work/projects/host-repo" -c user.name=test -c user.email=test@example.com \
+        commit -q --allow-empty -m init
+    projects=(-v "$work/projects:/home/$user/projects")
+fi
 
 base=ubuntu:24.04
 if [ -n "$DOTFILES_DIR" ]; then
@@ -66,7 +81,7 @@ boot() {
         --tmpfs /run --tmpfs /run/lock \
         -v "$name-home:/home" -v "$name-state:/var/lib/herdr-box" -v "$name-docker:/var/lib/docker" \
         -v "$name-containerd:/var/lib/containerd" \
-        -v "$work/config:/opt/herdr-box/config:ro" \
+        -v "$work/config:/opt/herdr-box/config:ro" ${projects[@]+"${projects[@]}"} \
         -p "127.0.0.1:$port:22" herdr-box-test >/dev/null
     for _ in $(seq 1 30); do
         docker exec "$name" systemctl is-system-running 2>/dev/null | grep -qE 'running|degraded|starting' && break
@@ -139,6 +154,14 @@ pass "repo mise.toml pin (node 24) beats the default"
 sshu 'docker run --rm hello-world' | grep -q 'Hello from Docker' || fail "docker run as $user failed"
 pass "docker as $user"
 
+if [ -n "$PROJECTS_DIR" ]; then
+    # A host-made repo is usable by the box user, and writes show up on the host.
+    sshu 'git -C ~/projects/host-repo log --oneline' | grep -q init || fail "host repo not usable on the box"
+    sshu 'echo from-box > ~/projects/host-repo/box.txt'
+    [ "$(cat "$work/projects/host-repo/box.txt")" = from-box ] || fail "box write not visible on the host"
+    pass "projects mount: host repo usable by $user, writes reach the host"
+fi
+
 sshu 'sudo -n true' || fail "$user has no sudo"
 ssh -p "$port" -o BatchMode=yes -o PubkeyAuthentication=no -o PreferredAuthentications=password \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$user@127.0.0.1" true 2>/dev/null &&
@@ -152,6 +175,19 @@ sh_out=$(ssh -tt "${sshopts[@]}" "$user@127.0.0.1" "$BOX_SHELL -il -c true" 2>&1
 ! grep -iE 'not found|cannot find|error|no such file|permission denied' <<<"$sh_out" ||
     fail "interactive $BOX_SHELL startup printed errors: $sh_out"
 pass "login shell $BOX_SHELL starts cleanly"
+
+# Agents run in hc terminals, so the shared model URL must reach them.
+# shellcheck disable=SC2016 # expands in the hc terminal
+sshu 'hc run --bg --name llm -- sh -c "echo llm-url=\${LLAMA_CPP_BASE_URL:-none}; sleep 30"' >/dev/null
+llm=
+for _ in $(seq 1 30); do
+    llm=$(sshu 'hc read llm' | grep -o 'llm-url=[^ ]*' | head -n1 | cut -d= -f2-) || true
+    [ -n "$llm" ] && break
+    sleep 1
+done
+sshu 'hc kill llm; hc rm llm' >/dev/null 2>&1 || true
+[ "$llm" = "${LLAMA_CPP_URL:-none}" ] || fail "hc terminal LLAMA_CPP_BASE_URL is '$llm', want '${LLAMA_CPP_URL:-none}'"
+pass "LLAMA_CPP_BASE_URL in hc terminals (${LLAMA_CPP_URL:-unset})"
 
 if [ -n "$DOTFILES_REPO" ]; then
     sshu 'test -d ~/projects/dotfiles/.git' || fail "dotfiles repo missing"
@@ -180,7 +216,8 @@ fi
 # Make the home look older: owned by another uid, and without the dotfiles repo. The
 # next boot must give the account the home's uid and bring the dotfiles back
 # (seeded from the base image's /opt/dotfiles, or cloned).
-docker exec "$name" sh -c "cd /home/$user && rm -rf projects/dotfiles && chown -R 1005:1005 ."
+# Only the home volume (-xdev): a mounted ~/projects comes from the host as is.
+docker exec "$name" sh -c "cd /home/$user && rm -rf projects/dotfiles && find . -xdev -exec chown -h 1005:1005 {} +"
 hostkey=$(ssh-keyscan -p "$port" -t ed25519 127.0.0.1 2>/dev/null | cut -d' ' -f3)
 docker rm -f "$name" >/dev/null
 start=$(date +%s)

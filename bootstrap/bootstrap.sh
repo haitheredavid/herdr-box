@@ -17,6 +17,7 @@
 #   - the BOX_USER account: login shell BOX_SHELL, passwordless sudo, docker group, lingering
 #   - herdr-core, herdr TUI, Claude Code, Codex, omp in ~/.local/bin (+ herdr integrations)
 #   - dotfiles via bootstrap/dotfiles.sh (run as BOX_USER), when box.conf sets DOTFILES_REPO
+#   - LLAMA_CPP_BASE_URL for every shell and terminal, when box.conf sets LLAMA_CPP_URL
 set -euo pipefail
 
 say() { echo "herdr-box: $*"; }
@@ -40,7 +41,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -h | --help)
-            sed -n '2,19p' "$0"
+            sed -n '2,20p' "$0"
             exit 0
             ;;
         *) die "unknown argument: $1 (see --help)" ;;
@@ -60,12 +61,15 @@ if [ "$system_only" = 0 ]; then
     BOX_SHELL=bash
     DOTFILES_REPO=
     DOTFILES_SETUP=linux/setup.sh
+    LLAMA_CPP_URL=
     # shellcheck source=/dev/null
     . "$config/box.conf"
     u=$BOX_USER
     [[ $u =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "invalid BOX_USER '$u' in box.conf"
     grep -Eq '^(ssh-|ecdsa-|sk-)' "$config/authorized_keys" || die "$config/authorized_keys has no SSH public key"
     case $BOX_SHELL in bash | zsh) ;; *) die "BOX_SHELL must be bash or zsh, not '$BOX_SHELL'" ;; esac
+    [ -z "$LLAMA_CPP_URL" ] || [[ $LLAMA_CPP_URL =~ ^https?://[^[:space:]\"\'\$\`]+$ ]] ||
+        die "invalid LLAMA_CPP_URL '$LLAMA_CPP_URL' in box.conf (want http://host:port)"
 fi
 
 STATE_DIR=/var/lib/herdr-box
@@ -133,6 +137,7 @@ case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) PATH="$HOME/.local/bin:$PATH" ;;
 case ":$PATH:" in *":$HOME/.local/share/mise/shims:"*) ;; *) PATH="$HOME/.local/share/mise/shims:$PATH" ;; esac
 export PATH
 export MISE_TRUSTED_CONFIG_PATHS="$HOME/projects"
+if [ -r /etc/herdr-box/llm.env ]; then . /etc/herdr-box/llm.env; fi
 EOF
 # zsh login shells skip /etc/profile.d; source the same definition from zprofile.
 zprofile_line=". /etc/profile.d/herdr-box.sh # managed by herdr-box bootstrap"
@@ -192,6 +197,16 @@ ClientAliveInterval 30
 EOF
 sshd -t || die "sshd config invalid; see above"
 systemctl try-reload-or-restart ssh.service 2>/dev/null || true
+
+# --- shared model server (optional) ---------------------------------------------------
+# omp discovers a llama.cpp server at LLAMA_CPP_BASE_URL (implicit llama.cpp provider).
+if [ -n "$LLAMA_CPP_URL" ]; then
+    install -d -m 755 /etc/herdr-box
+    printf '# Managed by herdr-box bootstrap.\nexport LLAMA_CPP_BASE_URL="%s"\n' "$LLAMA_CPP_URL" >/etc/herdr-box/llm.env
+    chmod 644 /etc/herdr-box/llm.env
+else
+    rm -f /etc/herdr-box/llm.env
+fi
 
 # --- account -------------------------------------------------------------------------
 if id "$u" >/dev/null 2>&1; then

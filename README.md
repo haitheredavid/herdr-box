@@ -41,6 +41,14 @@ Once, on the box; they live in `/home` and survive rebuilds.
 
 Set `DOTFILES_REPO` in `box.conf`: it's cloned to `~/projects/dotfiles` and `DOTFILES_SETUP` (default `linux/setup.sh`, must be idempotent) runs at every boot. Set `dotfiles_dir` in `terraform.tfvars` to also build the image on that checkout's `linux/Dockerfile`, which should create `BOX_USER` and copy the repo to `/opt/dotfiles`. Example: [haitheredavid/dotfiles](https://github.com/haitheredavid/dotfiles).
 
+## Projects from your Mac (optional)
+
+Set `projects_dir = "~/projects"` in `terraform.tfvars` to bind-mount that directory at `~/projects` on the box: one copy, edited live from either side. It hides whatever the home volume had in `~/projects` (unmounting brings it back), and the dotfiles bootstrap then uses the checkout there. Dependency and build dirs (`node_modules`, `.venv`, `target`) hold per-OS binaries, so build and run each project on one side. Applies to the container only.
+
+## Shared local model (optional)
+
+On the Mac (Tailscale running): `mise run llm:up` runs Llama 3.1 8B Instruct in a Metal `llama-server` LaunchAgent on loopback and serves it to your tailnet (`tailscale serve`, port 8080). The first start downloads about 4.9 GB. It prints the URL to put in `box.conf` as `LLAMA_CPP_URL`; the bootstrap exports it to every shell and Herdr terminal as `LLAMA_CPP_BASE_URL`, where omp discovers it (`omp models`). `llm:status` and `llm:down` check and stop it. Already-running Herdr terminals see it after herdr-core restarts.
+
 ## Changing it
 
 - `mise run deploy -- herdr-box`: re-run the bootstrap on the live box, no restart.

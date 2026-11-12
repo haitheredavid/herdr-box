@@ -45,3 +45,13 @@ run = "scripts/smoke.sh"
 [tasks.login]
 description = "log omp in to a provider via your browser (forwards its OAuth callback): mise run login -- <ssh-host> [provider]"
 run = "scripts/login.sh"
+
+[tasks."llm:up"]
+description = "on the Mac: run the shared llama.cpp model server and serve it on the tailnet"
+run = "scripts/llm.sh up"
+
+[tasks."llm:down"]
+run = "scripts/llm.sh down"
+
+[tasks."llm:status"]
+run = "scripts/llm.sh status"

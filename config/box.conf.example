@@ -14,3 +14,8 @@ BOX_SHELL="bash"
 # DOTFILES_SETUP (a path inside the repo) runs as BOX_USER; it must be idempotent.
 DOTFILES_REPO=""
 DOTFILES_SETUP="linux/setup.sh"
+
+# Optional shared llama.cpp server (scripts/llm.sh on the Mac that hosts it), as
+# http://<tailnet-host>:<port>. Exported to every shell and terminal as
+# LLAMA_CPP_BASE_URL, where omp discovers it (empty: none).
+LLAMA_CPP_URL=""

@@ -15,3 +15,9 @@ variable "dotfiles_dir" {
   type        = string
   default     = ""
 }
+
+variable "projects_dir" {
+  description = "Directory on the Docker host bind-mounted at ~/projects on the box (e.g. your Mac's ~/projects). Empty: projects live in the home volume."
+  type        = string
+  default     = ""
+}

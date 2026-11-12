@@ -41,7 +41,12 @@ echo "$screen" | grep -q herdr-smoke-ok || fail "hc terminal output not readable
 # shellcheck disable=SC2088 # literal path in the message, expanded remotely in the test
 s 'test -w ~/projects' || fail "~/projects not writable"
 
+# The shared model server (box.conf LLAMA_CPP_URL) is reported, not required: its
+# Mac may be asleep.
+# shellcheck disable=SC2016 # expands on the box
+llm=$(s 'bash -lc "[ -n \"\${LLAMA_CPP_BASE_URL:-}\" ] || { echo none; exit 0; }; curl -sf -m 5 \"\$LLAMA_CPP_BASE_URL/health\" >/dev/null && echo ok || echo unreachable"') || llm=unknown
+
 tools=$(echo "$screen" | grep -o 'tool:[a-z]*' | cut -d: -f2 | tr '\n' ' ')
 echo "$screen" | grep -q lsp-checked || fail "hc terminal did not finish the language server check"
 missing=$(echo "$screen" | grep -o 'lsp-missing:[a-z-]*' | cut -d: -f2 | tr '\n' ' ')
-echo "herdr-box smoke ok ($target): hc terminals see: ${tools:-no tools}; language servers missing: ${missing:-none}"
+echo "herdr-box smoke ok ($target): hc terminals see: ${tools:-no tools}; language servers missing: ${missing:-none}; llm: $llm"
