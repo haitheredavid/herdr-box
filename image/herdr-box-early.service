@@ -1,0 +1,17 @@
+[Unit]
+Description=herdr-box host setup (host keys, account, sshd) before logins
+# Needs no network. Runs between sysinit and sockets: ssh.socket belongs to
+# sockets.target, which basic.target (a default dependency) waits for, so default
+# dependencies would make an ordering cycle and systemd would drop a job at random.
+DefaultDependencies=no
+After=sysinit.target local-fs.target systemd-tmpfiles-setup.service
+Before=sockets.target ssh.socket ssh.service tailscaled.service systemd-user-sessions.service shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /opt/herdr-box/bootstrap/bootstrap.sh --phases host
+
+[Install]
+WantedBy=multi-user.target

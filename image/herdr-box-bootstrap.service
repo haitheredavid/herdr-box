@@ -1,13 +1,19 @@
 [Unit]
-Description=herdr-box bootstrap (idempotent host setup)
+Description=herdr-box bootstrap (idempotent packages, system and user setup)
+Requires=herdr-box-early.service
+After=herdr-box-early.service
 Wants=network-online.target
 After=network-online.target
+# Keep retrying a flaky network forever rather than giving up.
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/bash /opt/herdr-box/bootstrap/bootstrap.sh
-TimeoutStartSec=0
+ExecStart=/bin/bash /opt/herdr-box/bootstrap/bootstrap.sh --phases packages,system,user
+TimeoutStartSec=30min
+Restart=on-failure
+RestartSec=30
 
 [Install]
 WantedBy=multi-user.target

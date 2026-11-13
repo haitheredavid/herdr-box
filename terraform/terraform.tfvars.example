@@ -1,17 +1,36 @@
 # Copy to terraform/terraform.tfvars (git-ignored) and edit.
 
-# Container name, hostname, and Tailscale machine name.
-# name = "herdr-box"
-
-# Docker daemon to run the box on (default: DOCKER_HOST or the local socket).
+# Docker daemon to run the boxes on (default: DOCKER_HOST or the local socket).
 # docker_host = "ssh://me@machine"
 
-# Dotfiles checkout whose linux/Dockerfile the box image builds on (empty: plain
-# Ubuntu 24.04). That image should create BOX_USER and may put the checkout at
-# /opt/dotfiles, from which homes without ~/projects/dotfiles are seeded.
-# dotfiles_dir = "~/projects/dotfiles"
+# Boxes on this Docker host, keyed by name: container name, hostname, Tailscale
+# machine name, and volume prefix. Each box needs boxes/<name>/box.conf (with
+# BOX_USER); boxes/<name>/authorized_keys and boxes/<name>/env are optional and
+# copied into the container at /opt/herdr-box/box/.
+boxes = {
+  "herdr-box" = {
+    # Directory on the Docker host to mount at ~/projects on the box, shared live.
+    # Unset: projects live in the home volume (whatever is there is hidden while
+    # this is mounted). Build and dependency dirs (node_modules, .venv) are per-OS:
+    # build each project on one side.
+    projects_dir = "~/projects"
 
-# Directory on the Docker host to mount at ~/projects on the box, shared live. Empty:
-# projects live in the home volume (whatever is there is hidden while this is mounted).
-# Build and dependency dirs (node_modules, .venv) are per-OS: build each project on one side.
-# projects_dir = "~/projects"
+    # Image to build on (default ubuntu:24.04), e.g. one built from your dotfiles.
+    # base_image = "my-dotfiles:latest"
+
+    # Extra apt packages baked into the image.
+    # extra_apt_packages = ["htop", "ripgrep"]
+
+    # Resource limits: memory and shm_size in MB, cpus as a decimal string.
+    # limits = {
+    #   memory   = 8192
+    #   cpus     = "4"
+    #   shm_size = 1024
+    # }
+
+    # Additional bind mounts from the Docker host.
+    # extra_mounts = [
+    #   { host_path = "~/datasets", container_path = "/data", read_only = true },
+    # ]
+  }
+}

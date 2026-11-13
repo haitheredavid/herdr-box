@@ -1,32 +1,43 @@
 # Toolchain defaults (/etc/mise/conf.d/herdr-box.toml). A repo's own mise.toml
-# pins win; mise installs those versions on first use.
+# pins win; mise installs those versions on first use. Pinned exactly so every
+# box matches; Renovate bumps them.
 [tools]
-node = "26"
-pnpm = "12"
-"npm:typescript" = "latest"
-python = "3.14"
-uv = "0.13"
-rust = { version = "stable", components = "rust-analyzer,rust-src" }
-just = "latest"
-databricks-cli = "latest"
+node = "26.13.0"
+pnpm = "12.19.0"
+"npm:typescript" = "7.0.2"
+python = "3.14.10"
+uv = "0.13.7"
+rust = { version = "1.99.1", components = "rust-analyzer,rust-src" }
+just = "1.59.0"
+databricks-cli = "1.25.0"
 
 # Language servers, on PATH through the mise shims for helix (dotfiles
 # languages.toml and its built-in defaults), omp (auto-detects them), and
 # Claude Code's LSP plugins (enabled in the dotfiles' settings.json).
 # Rust: rust-analyzer + rust-src come with the rust toolchain above.
 # TypeScript: omp uses `tsc --lsp` from TypeScript 7 above.
-"npm:@vtsls/language-server" = "latest"        # helix ts/js
-"npm:typescript-language-server" = "latest"    # Claude typescript-lsp; omp in TS <= 6 repos
-"npm:vscode-langservers-extracted" = "latest"  # eslint, json, css, html
-"npm:@mdx-js/language-server" = "latest"       # helix mdx
-ty = "latest"                                  # helix + omp python
-ruff = "latest"                                # helix + omp python lint/format
-"npm:pyright" = "latest"                       # Claude pyright-lsp (dotfiles omp lsp.json turns it off for omp)
-lua-language-server = "latest"
-marksman = "latest"                            # needs libicu74 (bootstrap apt)
-taplo = "latest"
-terraform-ls = "latest"
-"npm:bash-language-server" = "latest"
-shellcheck = "latest"                          # bash-language-server diagnostics
-"npm:yaml-language-server" = "latest"
-"npm:dockerfile-language-server-nodejs" = "latest"
+"npm:@vtsls/language-server" = "0.3.0"           # helix ts/js
+"npm:typescript-language-server" = "6.0.3"       # Claude typescript-lsp; omp in TS <= 6 repos
+"npm:vscode-langservers-extracted" = "4.10.0"    # eslint, json, css, html
+"npm:@mdx-js/language-server" = "0.6.4"          # helix mdx
+ty = "0.0.100"                                   # helix + omp python
+ruff = "0.17.4"                                  # helix + omp python lint/format
+"npm:pyright" = "1.1.414"                        # Claude pyright-lsp (dotfiles omp lsp.json turns it off for omp)
+lua-language-server = "3.19.2"
+marksman = "2026-02-08"                          # needs libicu74 (10-packages apt)
+taplo = "0.10.0"
+terraform-ls = "0.39.1"
+"npm:bash-language-server" = "5.8.1"
+shellcheck = "0.11.0"                            # bash-language-server diagnostics
+"npm:yaml-language-server" = "2.0.0"
+"npm:dockerfile-language-server-nodejs" = "0.15.0"
+
+# ctx (agent context scaffolding; omp /ctx-new and friends need it on PATH). The
+# http backend downloads the release tarball directly: no GitHub API or token.
+[tools."http:ctx"]
+# renovate: datasource=github-releases depName=haitheredavid/ctx
+version = "0.1.0"
+bin_path = "."
+[tools."http:ctx".platforms]
+linux-arm64 = { url = "https://github.com/haitheredavid/ctx/releases/download/v{{version}}/ctx-{{version}}-linux-arm64.tar.gz" }
+linux-x64 = { url = "https://github.com/haitheredavid/ctx/releases/download/v{{version}}/ctx-{{version}}-linux-x64.tar.gz" }

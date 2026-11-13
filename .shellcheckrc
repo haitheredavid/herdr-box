@@ -1,0 +1,3 @@
+# Sourced files (lib/common.sh, phases) resolve relative to the script that sources them.
+source-path=SCRIPTDIR
+external-sources=true

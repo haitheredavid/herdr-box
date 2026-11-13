@@ -3,9 +3,11 @@ terraform/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
-# Personal config; templates: *.example
-config/box.conf
-config/authorized_keys
+# Per-box config (personal); template: boxes/example/
+boxes/*
+!boxes/example/
+# mise run backup
+backups/
 terraform/terraform.tfvars
 PLAN.md
 TODO.md

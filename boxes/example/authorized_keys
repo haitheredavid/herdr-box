@@ -1,0 +1,4 @@
+# The SSH public key(s) allowed to log in as BOX_USER, one per line, e.g. the
+# contents of ~/.ssh/id_ed25519.pub.
+# A key used only for this box (ssh-keygen -t ed25519 -f ~/.ssh/herdr_box) keeps it
+# separate from your other machines.

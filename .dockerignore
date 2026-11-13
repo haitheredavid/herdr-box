@@ -2,3 +2,6 @@
 !bootstrap
 !config
 !image
+boxes/
+backups/
+**/.DS_Store

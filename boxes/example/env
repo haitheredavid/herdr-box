@@ -1,0 +1,4 @@
+# Environment for BOX_USER's shells and Herdr terminals: KEY=value, one per line.
+# Git-ignored; deployed with the box config. Keep long-lived secrets out of it.
+# EDITOR=nvim
+# DATABRICKS_HOST=https://example.cloud.databricks.com

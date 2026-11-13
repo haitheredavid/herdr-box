@@ -17,7 +17,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      # terraform validate evaluates main.tf's file("config/box.conf"), which is
-      # git-ignored; the committed template stands in for it.
-      - run: cp config/box.conf.example config/box.conf
+      # terraform validate reads boxes/<name>/box.conf for the default box
+      # (herdr-box), which is git-ignored; the committed template stands in for it.
+      - run: mkdir -p boxes/herdr-box && cp boxes/example/* boxes/herdr-box/
       - run: mise run check
+
+  test:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      # A box from the template: no dotfiles (nothing personal to clone in CI).
+      - name: prepare boxes/ci
+        run: |
+          mkdir -p boxes/ci
+          cp boxes/example/* boxes/ci/
+          sed -i -e 's/^BOX_USER=.*/BOX_USER="ci"/' \
+            -e 's/^DOTFILES_REPOSITORY=.*/DOTFILES_REPOSITORY=""/' boxes/ci/box.conf
+          grep -qx 'BOX_USER="ci"' boxes/ci/box.conf
+      - run: BOX=ci test/run.sh

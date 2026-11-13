@@ -1,33 +1,79 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":automergeStableNonMajor"],
+  "extends": [
+    "config:recommended",
+    ":automergeStableNonMajor"
+  ],
   "platformAutomerge": false,
   "ignorePaths": [],
+  "mise": {
+    "managerFilePatterns": [
+      "/^config/mise\\.toml$/",
+      "/^config/mise\\.amd64\\.toml$/"
+    ]
+  },
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Plain-Ubuntu base image default, repeated outside image/Dockerfile",
-      "managerFilePatterns": ["/^terraform/main\\.tf$/", "/^test/run\\.sh$/"],
-      "matchStrings": ["ubuntu:(?<currentValue>\\d+\\.\\d+)"],
-      "depNameTemplate": "ubuntu",
-      "datasourceTemplate": "docker",
-      "versioningTemplate": "ubuntu"
+      "description": "mise binary version installed by the packages phase",
+      "managerFilePatterns": [
+        "/^bootstrap/phases/10-packages\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\s+MISE_VERSION=\"?(?<currentValue>[0-9][^\"\\s]*)\"?"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "jdx/mise",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "description": "ctx release pinned for the mise http backend",
+      "managerFilePatterns": [
+        "/^config/mise\\.toml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\s+version = \"(?<currentValue>[^\"]+)\""
+      ],
+      "extractVersionTemplate": "^v?(?<version>.*)$"
     }
   ],
   "packageRules": [
     {
       "description": "Bump the provider constraint (~> 4.6 -> ~> 4.7) together with .terraform.lock.hcl",
-      "matchManagers": ["terraform"],
-      "matchDepTypes": ["required_provider"],
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchDepTypes": [
+        "required_provider"
+      ],
       "rangeStrategy": "bump"
     },
     {
+      "description": "Pin the Ubuntu base image (image/Dockerfile ARG BASE) by digest",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchDepNames": [
+        "ubuntu"
+      ],
+      "pinDigests": true
+    },
+    {
       "description": "A new Ubuntu release needs bootstrap changes; never automerge",
-      "matchDatasources": ["docker"],
-      "matchDepNames": ["ubuntu"],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchDepNames": [
+        "ubuntu"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
       "automerge": false,
       "prBodyNotes": [
-        "Before merging: update the release-specific apt package `libicu74` in `bootstrap/bootstrap.sh`, the \"Ubuntu 24.04\" mentions (README.md, AGENTS.md, bootstrap/bootstrap.sh, scripts/deploy.sh, terraform/variables.tf, terraform/terraform.tfvars.example), and run `mise run test` locally."
+        "Before merging: update the release-specific apt package `libicu74` in `bootstrap/phases/10-packages.sh`, the \"Ubuntu 24.04\" mentions (README.md, AGENTS.md, bootstrap/, scripts/deploy.sh, terraform/), and run `mise run test` locally."
       ]
     }
   ]

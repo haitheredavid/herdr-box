@@ -1,0 +1,44 @@
+# What scripts/smoke.sh and test/run.sh expect on a box: one `kind name` per line.
+# kinds: tool (on hc-terminal PATH), tool-amd64 (same, amd64 boxes only),
+#        lsp (on hc-terminal PATH), run (must exit 0 with --version in a login shell)
+tool claude
+tool codex
+tool omp
+tool ctx
+tool mise
+tool node
+tool pnpm
+tool tsc
+tool python
+tool uv
+tool cargo
+tool rustc
+tool just
+tool databricks
+tool docker
+tool-amd64 flutter
+lsp rust-analyzer
+lsp vtsls
+lsp typescript-language-server
+lsp vscode-eslint-language-server
+lsp vscode-json-language-server
+lsp mdx-language-server
+lsp ty
+lsp ruff
+lsp pyright-langserver
+lsp lua-language-server
+lsp marksman
+lsp taplo
+lsp terraform-ls
+lsp bash-language-server
+lsp yaml-language-server
+lsp docker-langserver
+# Native binaries that must actually start (marksman, a .NET binary, needs libicu).
+run rust-analyzer
+run ty
+run ruff
+run lua-language-server
+run marksman
+run taplo
+run terraform-ls
+run shellcheck

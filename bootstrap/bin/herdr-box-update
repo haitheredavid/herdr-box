@@ -1,23 +1,88 @@
 #!/bin/bash
-# Update Herdr and the agent tools in ~/.local/bin (run as yourself, not root).
-# Running hc terminals survive herdr-core update.
-set -euo pipefail
+# Update Herdr, the agent tools, and the mise tools (run as yourself, not root).
+# Running hc terminals survive herdr-core update. Waits for a running bootstrap.
+#
+# Tools come from /opt/herdr-box/config/tools.tsv, TAB-separated, '#' comments,
+# '-' means none:
+#   name  installer  runner  args  update  integration_sentinel
+# The binary is ~/.local/bin/<name>; its version is `<name> --version`. An update
+# of '-' reinstalls: the installer is downloaded to a temp file and run as
+# `<runner> <file> <args>`. Every tool is tried; failures are listed at the end
+# and make the exit non-zero.
+set -uo pipefail
 
 [ "$(id -u)" -ne 0 ] || {
     echo "herdr-box: run as your own user, not root" >&2
     exit 1
 }
+# shellcheck source=/dev/null
+[ -r /etc/profile.d/herdr-box.sh ] && . /etc/profile.d/herdr-box.sh
 export PATH="$HOME/.local/bin:$PATH"
 
-step() { echo "==> $*"; }
+if [ -e /run/herdr-box.lock ]; then
+    exec 9</run/herdr-box.lock
+    flock -w 600 9 || {
+        echo "herdr-box: a bootstrap still holds /run/herdr-box.lock after 10 minutes" >&2
+        exit 1
+    }
+fi
 
-step "herdr-core update"
-herdr-core update
-step "herdr update"
-herdr update
-step "claude update"
-claude update
-step "codex (reinstall latest)"
-curl -fsSL https://chatgpt.com/codex/install.sh | sh
-step "omp (reinstall latest binary)"
-curl -fsSL https://omp.sh/install | sh -s -- --binary
+tools=/opt/herdr-box/config/tools.tsv
+failures=()
+step() { echo "==> $*"; }
+fail() {
+    echo "herdr-box: $1 failed" >&2
+    failures+=("$1")
+}
+version() { "$HOME/.local/bin/$1" --version 2>&1 | head -n1 || true; }
+
+reinstall() { # url runner args
+    local tmp rc
+    tmp=$(mktemp) || return 1
+    if curl -fsSL --retry 3 --connect-timeout 20 --max-time 300 "$1" -o "$tmp"; then
+        # shellcheck disable=SC2086
+        "$2" "$tmp" $3
+        rc=$?
+    else
+        rc=1
+    fi
+    rm -f "$tmp"
+    return "$rc"
+}
+
+if [ -r "$tools" ]; then
+    while IFS=$'\t' read -r name url runner args ucmd _ || [ -n "${name:-}" ]; do
+        case $name in '' | '#'*) continue ;; esac
+        [ "${args:--}" != - ] || args=
+        step "$name"
+        echo "before: $(version "$name")"
+        if [ "${ucmd:--}" != - ]; then
+            bash -c "$ucmd" </dev/null || fail "$name"
+        elif [ "${url:--}" != - ] && [ "${runner:--}" != - ]; then
+            reinstall "$url" "$runner" "$args" </dev/null || fail "$name"
+        else
+            echo "herdr-box: $name has no update command or installer" >&2
+            fail "$name"
+        fi
+        echo "after:  $(version "$name")"
+    done <"$tools"
+else
+    echo "herdr-box: $tools not found" >&2
+    fail "tools.tsv"
+fi
+
+step "mise install"
+mise install || fail "mise install"
+step "mise prune"
+mise prune --yes || fail "mise prune"
+
+cat <<'MSG'
+
+Note: herdr integrations are installed only when missing. If a herdr update
+changed its hooks, re-run `herdr integration install <agent>` for each agent.
+MSG
+
+if [ ${#failures[@]} -gt 0 ]; then
+    echo "herdr-box: failed: ${failures[*]}" >&2
+    exit 1
+fi

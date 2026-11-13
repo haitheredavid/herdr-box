@@ -6,36 +6,52 @@ terraform = "1.14"
 [tasks.check]
 description = "static: shellcheck + terraform fmt/validate"
 run = [
-  "shellcheck bootstrap/*.sh bootstrap/bin/* scripts/*.sh test/*.sh",
+  "shellcheck -x bootstrap/*.sh bootstrap/lib/*.sh bootstrap/phases/*.sh bootstrap/bin/* scripts/*.sh test/*.sh",
   "terraform -chdir=terraform fmt -check -recursive",
   "terraform -chdir=terraform init -input=false >/dev/null",
   "terraform -chdir=terraform validate",
 ]
 
 [tasks.test]
-description = "end-to-end: build the image, boot it, bootstrap, smoke over SSH, replace and re-check (Docker, network)"
+description = "end-to-end: build the image, boot it, bootstrap, smoke over SSH, replace and re-check (Docker, network): BOX=<box> mise run test"
 run = "test/run.sh"
 
 [tasks."tf:init"]
 run = "terraform -chdir=terraform init -input=false"
 
 [tasks."tf:plan"]
+description = "build images and plan creates/updates (never replaces a running box)"
 run = "terraform -chdir=terraform plan -input=false -out=herdr-box.tfplan"
 
 [tasks."tf:apply"]
-description = "apply the reviewed plan from tf:plan"
+description = "apply the reviewed plan from tf:plan or tf:replace"
 run = "terraform -chdir=terraform apply herdr-box.tfplan"
 
+[tasks."tf:replace"]
+description = "plan replacing one box's container (home, state, host keys survive): mise run tf:replace -- <box>, then tf:apply"
+usage = 'arg "<box>"'
+run = 'terraform -chdir=terraform plan -input=false -replace="module.box[\"$usage_box\"].docker_container.box" -out=herdr-box.tfplan'
+
 [tasks.logs]
-description = "follow the in-container bootstrap"
-run = "docker exec herdr-box journalctl -fu herdr-box-bootstrap -o cat"
+description = "follow the in-container bootstrap: mise run logs -- [box]"
+usage = 'arg "[box]" default="herdr-box"'
+run = 'docker exec "$usage_box" journalctl -f -u herdr-box-early -u herdr-box-bootstrap -o cat'
 
 [tasks."ts:up"]
-description = "log the container into your tailnet (once; state persists in a volume)"
-run = "docker exec -it herdr-box tailscale up --hostname=herdr-box --ssh"
+description = "log the container into your tailnet (once; state persists in a volume): mise run ts:up -- [box]"
+usage = 'arg "[box]" default="herdr-box"'
+run = 'docker exec -it "$usage_box" tailscale up --hostname="$usage_box" --ssh'
+
+[tasks.backup]
+description = "tar a box's home volume into backups/: mise run backup -- [box]"
+usage = 'arg "[box]" default="herdr-box"'
+run = [
+  "mkdir -p backups",
+  'docker run --rm -v "$usage_box-home:/home:ro" -v "$PWD/backups:/backups" ubuntu:24.04 tar czf "/backups/$usage_box-home-$(date -u +%Y%m%dT%H%M%SZ).tgz" -C / home',
+]
 
 [tasks.deploy]
-description = "push bootstrap/config and re-run the bootstrap without a restart: mise run deploy -- <ssh-host>"
+description = "push bootstrap/, config/ and boxes/<box> and re-run the bootstrap without a restart: mise run deploy -- <ssh-host> [box]"
 run = "scripts/deploy.sh"
 
 [tasks.smoke]

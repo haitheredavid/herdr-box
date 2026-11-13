@@ -1,0 +1,9 @@
+# Agent tools installed for BOX_USER into ~/.local/bin (bootstrap/phases/40-user.sh).
+# Columns are TAB separated; "-" means none. The installer runs as `<runner> <file> <args>`;
+# update "-" means re-run the installer. integration_sentinel is relative to home.
+# name	installer	runner	args	update	integration_sentinel
+herdr-core	https://releases.herdr.dev/core/install.sh	sh	-	herdr-core update	-
+herdr	https://herdr.dev/install.sh	sh	-	herdr update	-
+claude	https://claude.ai/install.sh	bash	-	claude update	.claude/hooks/herdr-agent-state.sh
+codex	https://chatgpt.com/codex/install.sh	sh	-	-	.codex/herdr-agent-state.sh
+omp	https://omp.sh/install	sh	--binary	-	.omp/agent/extensions/herdr-omp-agent-state.ts

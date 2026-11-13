@@ -80,7 +80,7 @@ EOF
 
     tailscale serve --bg --http "$LLM_PORT" "127.0.0.1:$LLM_LOCAL_PORT" >/dev/null
     dns=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
-    echo "herdr-box: llm ready: set LLAMA_CPP_URL=\"http://$dns:$LLM_PORT\" in config/box.conf"
+    echo "herdr-box: llm ready: set LLAMA_CPP_URL=\"http://$dns:$LLM_PORT\" in boxes/<name>/box.conf, then mise run deploy"
 }
 
 down() {
